@@ -19,7 +19,7 @@ pos = {
     'w1': [1,6]
     }
 
-fig = gratelpy_draw(G, positions=pos, dictionary_complexes=dict_complexes_reverse, dictionary_reactions=dict_constants_reverse)
+fig = gratelpy_draw(G, positions=pos, dictionary_complexes=dict_complexes_reverse, dictionary_reactions=dict_constants_reverse, dotfile='example_4_graph.dot')
 plt.draw()
 plt.savefig('example_4_graph.pdf', bbox_inches='tight')
 
