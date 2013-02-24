@@ -4,7 +4,7 @@ from networkx.algorithms import bipartite
 from matplotlib import pyplot as plt
 import matplotlib
 
-def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_reactions=None, filename=None, subgraph=None, rnsize = 1600, cnsize = 1400):
+def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_reactions=None, filename=None, subgraph=None, rnsize = 1600, cnsize = 1400, dotfile=None):
     # draws entire graph or subgraph (subgraph being a fragment)
     # squares for reaction nodes, circles for complex nodes
     # inscribes s, w (complex and reaction nodes) labels into nodes
@@ -42,6 +42,12 @@ def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_react
     reaction_graph = nx.DiGraph()
     reaction_graph.add_nodes_from(reaction_nodes)
 
+    if dotfile is not None:
+        dot_graph = nx.DiGraph()
+        dot_graph.add_nodes_from(substance_nodes+reaction_nodes)
+    else:
+        dot_graph = None
+
     # if drawing subgraph, then generate specifically edges that are to be displayed
     if subgraph is not None:
         edges_graph = nx.DiGraph()
@@ -59,8 +65,13 @@ def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_react
                     edges_graph.add_edge(el[2], el[1])
                 else:
                     raise
+
+        if dotfile is not None:
+            dot_graph.add_edges_from(edges_graph.edges())
     else:
         edges_graph = None
+        if dotfile is not None:
+            dot_graph.add_edges_from(edge for edge in G.edges() if all(node in substance_nodes+reaction_nodes for node in edge))
 
     # generate complex labels
     if dictionary_complexes is None:
@@ -93,5 +104,15 @@ def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_react
 
     nx.draw_networkx_labels(substance_graph, positions, complex_labels, font_size=26)
     nx.draw_networkx_labels(reaction_graph, positions, reaction_labels, font_size=26)
+
+    # write dot file
+    if dotfile is not None:
+        try:
+            with open(dotfile) as df:
+                print ''
+                print 'WARNING. gratelpy_draw: dot file',df.name,'exists already. Will not overwrite hence doing nothing.'
+                print ''
+        except IOError as e:
+            nx.write_dot(dot_graph, dotfile)
 
     return fig
