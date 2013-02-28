@@ -38,12 +38,12 @@ for sg in subgraphs:
     all_nodes = set(n for el in sg for n in el)
     subgraphs_unfurled.append(list(all_nodes))
 
-gratelpy_draw(G.subgraph(frag_unfurled), positions=pos, dictionary_complexes=dict_complexes_reverse, dictionary_reactions=dict_constants_reverse)
+gratelpy_draw(G.subgraph(frag_unfurled), positions=pos, dictionary_complexes=dict_complexes_reverse, dictionary_reactions=dict_constants_reverse, dotfile='example_4_critical_fragment.dot')
 plt.draw()
 plt.savefig('example_4_critical_fragment.pdf', bbox_inches='tight')
 
 for sg_i, (sg_unfurled, sg) in enumerate(zip(subgraphs_unfurled, subgraphs)):
-    gratelpy_draw(G.subgraph(sg_unfurled), subgraph=sg, positions=pos, dictionary_complexes=dict_complexes_reverse, dictionary_reactions=dict_constants_reverse)
+    gratelpy_draw(G.subgraph(sg_unfurled), subgraph=sg, positions=pos, dictionary_complexes=dict_complexes_reverse, dictionary_reactions=dict_constants_reverse, dotfile='example_4_critical_fragment_sg_'+str(sg_i)+'.dot')
     plt.draw()
     plt.savefig('example_4_critical_fragment_sg_'+str(sg_i)+'.pdf', bbox_inches='tight')
 plt.show()
