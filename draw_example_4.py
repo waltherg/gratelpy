@@ -1,12 +1,12 @@
 from stoich import get_graph_stoich
 from parse_mechanism import get_network_from_mechanism
-from drawing import gratelpy_draw
+from drawing import gratelpy_draw, gratelpy_dot
 from matplotlib import pyplot as plt
 from fragments import get_sensible_fragments
 from subgraphs import get_all_valid_subgraphs
 
 #mechanism_file = '/usr/users/cbu/waltherg/JIC/Dropbox/GratelPy/mechanisms/reversible_substrate_inhibition.txt'
-mechanism_file = '/home/waltherg/Dropbox/GratelPy/mechanisms/reversible_substrate_inhibition.txt'
+mechanism_file = '../mechanisms/reversible_substrate_inhibition.txt'
 
 alpha, beta, dict_complexes, dict_constants, dict_complexes_reverse, dict_constants_reverse = get_network_from_mechanism(mechanism_file, 4)
 
@@ -47,3 +47,5 @@ for sg_i, (sg_unfurled, sg) in enumerate(zip(subgraphs_unfurled, subgraphs)):
     plt.draw()
     plt.savefig('example_4_critical_fragment_sg_'+str(sg_i)+'.pdf', bbox_inches='tight')
 plt.show()
+
+dot_graph = gratelpy_dot(G, positions=pos, dictionary_complexes=dict_complexes_reverse, dictionary_reactions=dict_constants_reverse,filename='test.dot')
