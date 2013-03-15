@@ -1,8 +1,106 @@
 import networkx as nx
 from networkx.algorithms import bipartite
+from networkx.drawing import nx_pydot
+import pydot
+import os
 
 from matplotlib import pyplot as plt
 import matplotlib
+
+def gratelpy_dot(G, positions=None, dictionary_complexes=None, dictionary_reactions=None, subgraph_components=None, filename=None, filename_print=None):
+    
+    if dictionary_complexes is not None:
+        if all(type(k) is not type(int()) for k in dictionary_complexes.keys()):
+            new_dict = {v:k for k,v in dictionary_complexes.iteritems()}
+            dictionary_complexes = new_dict
+
+    if dictionary_reactions is not None:
+        if all(type(k) is not type(int()) for k in dictionary_reactions.keys()):
+            new_dict = {v:k for k,v in dictionary_reactions.iteritems()}
+            dictionary_reactions = new_dict
+
+    pydot_graph = nx_pydot.to_pydot(G)
+
+    if positions is not None:
+        if not any('[' in k for k in positions.keys()):
+            for node in pydot_graph.get_node_list():
+                pos_list = positions[node.get_name()]
+            
+                node.set_pos('\"'+str(pos_list[0])+','+str(pos_list[1])+'!\"')
+
+    for node in pydot_graph.get_node_list():
+        if 'w' == node.get_name()[0]:
+            node.set_shape('\"box\"')
+        elif 's' == node.get_name()[0]:
+            node.set_shape('\"circle\"')
+
+    if dictionary_reactions is not None:
+        for node in pydot_graph.get_node_list():
+            node_name = node.get_name()
+            node_index = int(node_name[1:])
+            if 'w' == node_name[0]:
+                node.set_name(dictionary_reactions[node_index-1].translate(None, '[]'))
+
+    if dictionary_complexes is not None:
+        for node in pydot_graph.get_node_list():
+            node_name = node.get_name()
+            node_index = int(node_name[1:])
+            if 's' in node_name:
+                node.set_name(dictionary_complexes[node_index-1].translate(None, '[]'))
+
+    if positions is not None:
+        if any('[' in k for k in positions.keys()):
+            for node in pydot_graph.get_node_list():
+                if node.get_shape() == '\"circle\"':
+                    pos_list = positions['['+node.get_name()+']']
+                elif node.get_shape() == '\"box\"':
+                    pos_list = positions[node.get_name()]
+                else:
+                    print node.get_shape()
+                    raise
+            
+                node.set_pos('\"'+str(pos_list[0])+','+str(pos_list[1])+'!\"')
+
+    if dictionary_reactions is not None and dictionary_complexes is not None:
+        for edge in pydot_graph.get_edge_list():
+            edge_dest = edge.get_destination()
+            edge_dest_index = int(edge_dest[1:])
+
+            edge_orig = edge.get_source()
+            edge_orig_index = int(edge_orig[1:])
+
+            if edge_dest[0] == 'w':
+                edge_dest_new = dictionary_reactions[edge_dest_index-1].translate(None, '[]')
+            elif edge_dest[0] == 's':
+                edge_dest_new = dictionary_complexes[edge_dest_index-1].translate(None, '[]')
+            else:
+                raise
+
+            if edge_orig[0] == 'w':
+                edge_orig_new = dictionary_reactions[edge_orig_index-1].translate(None, '[]')
+            elif edge_orig[0] == 's':
+                edge_orig_new = dictionary_complexes[edge_orig_index-1].translate(None, '[]')
+            else:
+                raise
+
+            edge_new = pydot.Edge(src=edge_orig_new, dst=edge_dest_new)
+            pydot_graph.del_edge(edge_orig, dst=edge_dest)
+            pydot_graph.add_edge(edge_new)
+
+    # write dot file
+    if filename is not None:
+        try:
+            with open(filename) as df:
+                print ''
+                print 'WARNING. gratelpy_dot: dot file',df.name,'exists already. Will not overwrite hence doing nothing.'
+                print ''
+        except IOError as e:
+            with open(filename, 'w') as df:
+                df.write(pydot_graph.to_string())
+                if filename_print is not None:# and filename_print.split('.')[-1].lower() == 'pdf': 
+                    os.system('dot -Kfdp -n -Tpdf -o '+filename_print+' '+df.name)
+
+    return pydot_graph
 
 def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_reactions=None, filename=None, subgraph=None, rnsize = 1600, cnsize = 1400, dotfile=None):
     # draws entire graph or subgraph (subgraph being a fragment)
