@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-"""check_data.py
-
-Usage: check_data.py data_file [dictionary file]"""
 
 import socket
 hostname = socket.gethostname()
@@ -28,6 +25,9 @@ import itertools as it
 
 import math
 
+import argparse
+parser = argparse.ArgumentParser(description='Checks data that GraTelPy outputs for critical fragments, their correctness, correctness of score etc. If your data seems correct, some critical fragments are printed to standard output and all critical fragments are written to a file. Supply your mechanism, and species as well as constant dictionaries for improved output.')
+
 # data format
 frag_i = 0
 sc_i = 1
@@ -36,6 +36,8 @@ ks_i = 3
 
 # global variables available to interactive python sessions
 filename = None
+dictname = None
+mechanism = None
 data = None
 
 fragments = None
@@ -45,17 +47,38 @@ subgraph_components = None
 subgraphs = None 
 ks = None
 
-try:
-    filename = sys.argv[1]
-except IndexError:
-    print __doc__
-    sys.exit(2)
+parser.add_argument('filename', help='Name of file holding pickled list of dictionaries of fragments, corresponding subgraph components, subgraphs, and K_S fragment scores.', default=None)
+parser.add_argument('-dict', '--dictname', help='Dictionary of complexes and reactions.', default=None)
+parser.add_argument('-mech', '--mechanism', nargs=2, help='Mechanism file followed by number of species-- required for generating Dot files of entire graph, fragments, and corresponding subgraphs.', default=None)
+parser.add_argument('-pos','--positions', help='Textfile of format \'Node X Y\' that indicates x,y position of nodes in .dot file.')
 
-try:
-    dictname = sys.argv[2]
-except IndexError:
-    # no dictionary provided by caller
-    dictname = None
+args = parser.parse_args()
+filename = args.filename
+dictname = args.dictname
+print args
+if args.mechanism:
+    mechanism = args.mechanism[0]
+    no_species = int(args.mechanism[1])
+else:
+    mechanism = None
+    no_species = None
+
+if args.positions:
+    positions = args.positions
+else:
+    positions = None
+
+# try:
+#     filename = sys.argv[1]
+# except IndexError:
+#     print __doc__
+#     sys.exit(2)
+
+# try:
+#     dictname = sys.argv[2]
+# except IndexError:
+#     # no dictionary provided by caller
+#     dictname = None
 
 try:
     print 'loading your data from',filename
@@ -68,6 +91,26 @@ except IOError, e:
 
 basename = filename.split('.')[0]
 print 'Name of your data is',basename
+
+if mechanism and positions:
+    positions_dict = {}
+
+    with open(positions) as pos_f:
+        positions_in_file = pos_f.readlines()
+        positions_in_file = [entry.split() for entry in positions_in_file]
+        positions_dict = {entry[0]: tuple([float(entry[1]), float(entry[2])]) for entry in positions_in_file}
+        
+        print 'positions of nodes in .dot graph',positions_dict
+        
+
+if mechanism is not None:
+    from parse_mechanism import get_network_from_mechanism
+    from stoich import get_graph_stoich
+    from drawing import gratelpy_dot
+
+    alpha, beta, dict_complexes, dict_constants, dict_complexes_reverse, dict_constants_reverse = get_network_from_mechanism(mechanism, no_species)
+
+    G, stoich, stoich_rank = get_graph_stoich(alpha, beta)
 
 if dictname is not None:
     try:
@@ -279,14 +322,22 @@ except:
     print 'cannot open file for output',output_file_name
     sys.exit(2)
 
+if mechanism:
+    dot_basename = basename+'_order_'+str(order)
+    print 'will write .dot files with basename',dot_basename
+
 print 'printing all critical fragments with subgraphs and K_S score to file',output_file_name
 
 if dictname is None:
     for f_i, f in enumerate(critical_fragments_unique):
+
+        dot_graph = None
+
         sg_motifs = get_subgraph_motifs(subgraph_components[f])
         
         output_file.write('==========================================\n')
         output_file.write('frag '+str(f_i)+' '+str(f[0])+str(f[1])+' K_S = '+str(ks[f]))
+             
         output_file.write('\n')
         output_file.write('------------------------------------------\n')
         for sg_i, sg in enumerate(subgraphs[f]):
@@ -305,15 +356,54 @@ else:
     cd = {'s'+str(key+1): dictionary['complexes_dict_reverse'][key].translate(None,'[]') for key in dictionary['complexes_dict_reverse']}
     kd = {'w'+str(key+1): dictionary['constants_dict_reverse'][key].translate(None,'[]') for key in dictionary['constants_dict_reverse']}
     
+    if mechanism:
+        gratelpy_dot(G, positions=positions_dict, dictionary_complexes = dict_complexes_reverse, dictionary_reactions = dict_constants_reverse, filename=dot_basename+'_graph.dot', filename_print=dot_basename+'_graph.pdf')
+
     for f_i, f in enumerate(critical_fragments_unique):
         sg_motifs = get_subgraph_motifs(subgraph_components[f])
         fp = pretty_print(subgraphs[f])
         
+        if mechanism:
+            frag_subgraph = nx.DiGraph()
+            
+            for sg_i, sg in enumerate(subgraphs[f]):
+                for sg_el in sg:
+                    if len(sg_el) == 2:
+                        frag_subgraph.add_edge(sg_el[0], sg_el[1])
+                    elif len(sg_el) == 4 and sg_el[3] == 'p':
+                        frag_subgraph.add_edge(sg_el[0], sg_el[1])
+                        frag_subgraph.add_edge(sg_el[1], sg_el[2])
+                    elif len(sg_el) == 4 and sg_el[3] == 'n':
+                        frag_subgraph.add_edge(sg_el[0], sg_el[1])
+                        frag_subgraph.add_edge(sg_el[2], sg_el[1])
+        
+            #frag_subgraph = G.subgraph([el for el in f[0]]+[el for el in f[1]])
+            
+            gratelpy_dot(frag_subgraph, positions=positions_dict, dictionary_complexes = dict_complexes_reverse, dictionary_reactions = dict_constants_reverse, filename=dot_basename+'_frag_'+str(f_i)+'.dot', filename_print=dot_basename+'_frag_'+str(f_i)+'.pdf')
+            
         output_file.write('==========================================\n')
         output_file.write('frag '+str(f_i)+' '+str(tuple(cd[compl] for compl in fp[0]))+str(tuple(kd[const] for const in fp[1]))+' K_S = '+str(ks[f]))
         output_file.write('\n')
         output_file.write('------------------------------------------\n')
         for sg_i, sg in enumerate(subgraphs[f]):
+
+            if mechanism:
+                sg_nodes = set(el for sg_el in sg for el in sg_el)
+                sg_graph = nx.DiGraph()
+                sg_graph.add_nodes_from(node_G for node_G in G.nodes() if node_G in sg_nodes)
+                
+                for sg_el in sg:
+                    if len(sg_el) == 2:
+                        sg_graph.add_edge(sg_el[0], sg_el[1])
+                    elif len(sg_el) == 4 and sg_el[3] == 'p':
+                        sg_graph.add_edge(sg_el[0], sg_el[1])
+                        sg_graph.add_edge(sg_el[1], sg_el[2])
+                    elif len(sg_el) == 4 and sg_el[3] == 'n':
+                        sg_graph.add_edge(sg_el[0], sg_el[1])
+                        sg_graph.add_edge(sg_el[2], sg_el[1])
+                
+                gratelpy_dot(sg_graph, positions=positions_dict, dictionary_complexes = dict_complexes_reverse, dictionary_reactions = dict_constants_reverse, filename=dot_basename+'_frag_'+str(f_i)+'_sg_'+str(sg_i)+'.dot', filename_print=dot_basename+'_frag_'+str(f_i)+'_sg_'+str(sg_i)+'.pdf')
+
             output_file.write('sg '+str(sg_i)+': '+str(tuple(tuple(cd[elc] if 's' in elc else kd[elc] if 'w' in elc else elc for elc in el) for el in sg))+'\n')
             output_file.write('edges: ')
             for edge in sg_motifs[frozenset(sg)]['edges']:
