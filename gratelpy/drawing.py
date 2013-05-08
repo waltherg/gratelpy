@@ -1,10 +1,166 @@
 import networkx as nx
 from networkx.algorithms import bipartite
+from networkx.drawing import nx_pydot
+import pydot
+import os
+import sys
 
 from matplotlib import pyplot as plt
 import matplotlib
 
-def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_reactions=None, filename=None, subgraph=None, rnsize = 1600, cnsize = 1400):
+def gratelpy_dot(G, positions=None, dictionary_complexes=None, dictionary_reactions=None, subgraph_components=None, filename=None, filename_print=None, cycles=None):
+
+    scaling_factor = 40.
+
+    if dictionary_complexes is not None:
+        if all(type(k) is not type(int()) for k in dictionary_complexes.keys()):
+            new_dict = {v:k for k,v in dictionary_complexes.iteritems()}
+            dictionary_complexes = new_dict
+
+    if dictionary_reactions is not None:
+        if all(type(k) is not type(int()) for k in dictionary_reactions.keys()):
+            new_dict = {v:k for k,v in dictionary_reactions.iteritems()}
+            dictionary_reactions = new_dict
+
+    pydot_graph = nx_pydot.to_pydot(G)
+    pydot_graph.set_size('\"8.3,8.3\"')
+    pydot_graph.set_ratio('\"fill\"')
+    pydot_graph.set_overlap('\"true\"')
+    #pydot_graph.set_margin('\"0.01,0.01\"')
+    pydot_graph.set_splines('\"curved\"')
+    pydot_graph.set_remincross('\"true\"')
+
+    if positions is not None:
+        unique_positions = {}
+        if not any('[' in k for k in positions.keys()):
+            raise
+            for node in pydot_graph.get_node_list():
+                pos_key = tuple(positions[node.get_name()])
+                if pos_key not in unique_positions.keys():
+                    unique_positions[pos_key] = []
+                    unique_positions[pos_key].append(node.get_name())
+                    
+                    
+                else:
+                    unique_positions[pos_key].append(node.get_name())
+            
+            raise('This feature is not implemented yet.')
+
+            for node in pydot_graph.get_node_list():
+                pos_list = positions[node.get_name()]
+                
+                node.set_pos('\"'+str(scaling_facotr*pos_list[0])+','+str(scaling_factor*pos_list[1])+'!\"')
+
+    for node in pydot_graph.get_node_list():
+        if 'w' == node.get_name()[0]:
+            node.set_shape('\"box\"')
+        elif 's' == node.get_name()[0]:
+            node.set_shape('\"circle\"')
+
+    if dictionary_reactions is not None:
+        for node in pydot_graph.get_node_list():
+            node_name = node.get_name()
+            node_index = int(node_name[1:])
+            if 'w' == node_name[0]:
+                node.set_name(dictionary_reactions[node_index-1].translate(None, '[]'))
+
+    if dictionary_complexes is not None:
+        for node in pydot_graph.get_node_list():
+            node_name = node.get_name()
+            node_index = int(node_name[1:])
+            if 's' in node_name:
+                node.set_name(dictionary_complexes[node_index-1].translate(None, '[]'))
+
+    if positions is not None:
+        unique_positions = {}
+        if any('[' in k for k in positions.keys()):
+            for node in pydot_graph.get_node_list():
+                if node.get_shape() == '\"circle\"':
+                    pos_key = tuple(positions['['+node.get_name()+']'])
+                elif node.get_shape() == '\"box\"':
+                    pos_key = tuple(positions[node.get_name()])
+                else:
+                    raise
+                if pos_key not in unique_positions.keys():
+                    unique_positions[pos_key] = []
+                    unique_positions[pos_key].append(node)
+                else:
+                    unique_positions[pos_key].append(node)
+                    node.set_style('\"invis\"')
+
+            for unique_pos in unique_positions.keys():
+                if len(unique_positions[unique_pos]) > 1:
+                    label_node = unique_positions[unique_pos][0]
+                    this_label = '\"'+label_node.get_name()
+                    for other_node in unique_positions[unique_pos][1:]:
+                        this_label += ','+other_node.get_name()
+                    this_label += '\"'
+                    label_node.set_label(this_label)
+
+            for node in pydot_graph.get_node_list():
+                if node.get_shape() == '\"circle\"':
+                    pos_list = positions['['+node.get_name()+']']
+                elif node.get_shape() == '\"box\"':
+                    pos_list = positions[node.get_name()]
+                else:
+                    print node.get_shape()
+                    raise
+            
+                node.set_pos('\"'+str(scaling_factor*pos_list[0])+','+str(scaling_factor*pos_list[1])+'!\"')
+
+    if dictionary_reactions is not None and dictionary_complexes is not None:
+        for edge in pydot_graph.get_edge_list():
+            edge_dest = edge.get_destination()
+            edge_dest_index = int(edge_dest[1:])
+
+            edge_orig = edge.get_source()
+            edge_orig_index = int(edge_orig[1:])
+
+            if edge_dest[0] == 'w':
+                edge_dest_new = dictionary_reactions[edge_dest_index-1].translate(None, '[]')
+            elif edge_dest[0] == 's':
+                edge_dest_new = dictionary_complexes[edge_dest_index-1].translate(None, '[]')
+            else:
+                raise
+
+            if edge_orig[0] == 'w':
+                edge_orig_new = dictionary_reactions[edge_orig_index-1].translate(None, '[]')
+            elif edge_orig[0] == 's':
+                edge_orig_new = dictionary_complexes[edge_orig_index-1].translate(None, '[]')
+            else:
+                raise
+
+            edge_new = pydot.Edge(src=edge_orig_new, dst=edge_dest_new)
+            pydot_graph.del_edge(edge_orig, dst=edge_dest)
+            pydot_graph.add_edge(edge_new)
+
+    # write dot file
+    if filename is not None:
+        with open(filename, 'w') as df:
+                df.write(pydot_graph.to_string())
+
+    if filename_print is not None:# and filename_print.split('.')[-1].lower() == 'pdf':
+        if positions:
+            os.system('neato -n -Tpdf -o '+filename_print+' '+df.name)
+            os.system('pdfcrop '+filename_print+' '+filename_print)
+        else:
+            os.system('dot -Tpdf -o '+filename_print+' '+df.name)
+            os.system('pdfcrop ' + filename_print +' '+filename_print)
+
+        # try:
+        #     with open(filename) as df:
+        #         print ''
+        #         print 'WARNING. gratelpy_dot: dot file',df.name,'exists already. Will not overwrite hence doing nothing.'
+        #         print ''
+        # except IOError as e:
+        #     with open(filename, 'w') as df:
+        #         df.write(pydot_graph.to_string())
+        #         if filename_print is not None:# and filename_print.split('.')[-1].lower() == 'pdf': 
+        #             os.system('dot -Kfdp -n -Tpdf -o '+filename_print+' '+df.name)
+
+    return pydot_graph
+
+def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_reactions=None, filename=None, subgraph=None, rnsize = 1600, cnsize = 1400, dotfile=None):
     # draws entire graph or subgraph (subgraph being a fragment)
     # squares for reaction nodes, circles for complex nodes
     # inscribes s, w (complex and reaction nodes) labels into nodes
@@ -42,6 +198,12 @@ def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_react
     reaction_graph = nx.DiGraph()
     reaction_graph.add_nodes_from(reaction_nodes)
 
+    if dotfile is not None:
+        dot_graph = nx.DiGraph()
+        dot_graph.add_nodes_from(substance_nodes+reaction_nodes)
+    else:
+        dot_graph = None
+
     # if drawing subgraph, then generate specifically edges that are to be displayed
     if subgraph is not None:
         edges_graph = nx.DiGraph()
@@ -59,8 +221,13 @@ def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_react
                     edges_graph.add_edge(el[2], el[1])
                 else:
                     raise
+
+        if dotfile is not None:
+            dot_graph.add_edges_from(edges_graph.edges())
     else:
         edges_graph = None
+        if dotfile is not None:
+            dot_graph.add_edges_from(edge for edge in G.edges() if all(node in substance_nodes+reaction_nodes for node in edge))
 
     # generate complex labels
     if dictionary_complexes is None:
@@ -93,5 +260,15 @@ def gratelpy_draw(G, positions=None, dictionary_complexes=None, dictionary_react
 
     nx.draw_networkx_labels(substance_graph, positions, complex_labels, font_size=26)
     nx.draw_networkx_labels(reaction_graph, positions, reaction_labels, font_size=26)
+
+    # write dot file
+    if dotfile is not None:
+        try:
+            with open(dotfile) as df:
+                print ''
+                print 'WARNING. gratelpy_draw: dot file',df.name,'exists already. Will not overwrite hence doing nothing.'
+                print ''
+        except IOError as e:
+            nx.write_dot(dot_graph, dotfile)
 
     return fig
