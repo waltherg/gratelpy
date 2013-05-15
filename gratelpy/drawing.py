@@ -29,6 +29,7 @@ def gratelpy_dot(G, positions=None, dictionary_complexes=None, dictionary_reacti
     #pydot_graph.set_margin('\"0.01,0.01\"')
     pydot_graph.set_splines('\"curved\"')
     pydot_graph.set_remincross('\"true\"')
+#    pydot_graph.set_fontsize('\"26\"')
 
     if positions is not None:
         unique_positions = {}
@@ -56,6 +57,9 @@ def gratelpy_dot(G, positions=None, dictionary_complexes=None, dictionary_reacti
             node.set_shape('\"box\"')
         elif 's' == node.get_name()[0]:
             node.set_shape('\"circle\"')
+
+    for node in pydot_graph.get_node_list():
+        node.set_fontsize('26')
 
     if dictionary_reactions is not None:
         for node in pydot_graph.get_node_list():
