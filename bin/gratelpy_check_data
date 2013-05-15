@@ -94,9 +94,9 @@ if mechanism and positions:
         
 
 if mechanism is not None:
-    from parse_mechanism import get_network_from_mechanism
-    from stoich import get_graph_stoich
-    from drawing import gratelpy_dot
+    from gratelpy.parse_mechanism import get_network_from_mechanism
+    from gratelpy.stoich import get_graph_stoich
+    from gratelpy.drawing import gratelpy_dot
 
     alpha, beta, dict_complexes, dict_constants, dict_complexes_reverse, dict_constants_reverse = get_network_from_mechanism(mechanism, no_species)
 
