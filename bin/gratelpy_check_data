@@ -390,9 +390,9 @@ a_r = 'a_'+str(order)+'(u,w) = '
 
 for spec in f_species:
     species_string = '(1/'
-    species_string += spec[0]
+    species_string += 's['+str(int(spec[0][1:])-1)+']'
     for s in spec[1:]:
-        species_string += '*'+s
+        species_string += '*s['+str(int(s[1:])-1)+']'
     species_string += ')*'
     
     reaction_rate_string = '('
@@ -405,9 +405,9 @@ for spec in f_species:
 
             this_r += str(abs(ks[f]))
 
-            this_r += '*'+f[1][0]
+            this_r += '*w['+str(int(f[1][0][1:])-1)+']'
             for r in f[1][1:]:
-                this_r += '*'+r
+                this_r += '*w['+str(int(r[1:])-1)+']'
 
             reaction_rate_string += this_r
 
