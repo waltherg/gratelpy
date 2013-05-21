@@ -379,25 +379,68 @@ else:
         output_file.write('\n')
 output_file.close()
 
+print 'fragment species'
+f_species = []
+for f_i, f in enumerate(fragments_unique):
+    if f[0] not in f_species:
+        f_species.append(f[0])
+
 # print out a_r (coefficient of characteristic polynomial) as a function of reaction rates and steady-state species concentrations
 a_r = 'a_'+str(order)+'(u,w) = '
-for f_i, f in enumerate(fragments_unique):
+
+for spec in f_species:
+    species_string = '(1/'
+    species_string += spec[0]
+    for s in spec[1:]:
+        species_string += '*'+s
+    species_string += ')*'
+    
     reaction_rate_string = '('
-    species_string = '('
-    for ind in range(order):
-        reaction_rate_string += f[1][ind]
-        species_string += f[0][ind]
+    for f_i, f in enumerate(fragments_unique):
+        if f[0] == spec:
+            if ks[f] > 0:
+                this_r = '+'
+            else:
+                this_r = '-'
+
+            this_r += str(abs(ks[f]))
+
+            this_r += '*'+f[1][0]
+            for r in f[1][1:]:
+                this_r += '*'+r
+
+            reaction_rate_string += this_r
+
     reaction_rate_string += ')'
-    species_string += ')'
+    
+    a_r += '+' + species_string + reaction_rate_string
 
-    if ks[f] > 0:
-        a_r += '+'
-    else:
-        a_r += '-'
-
-    a_r += str(abs(ks[f])) + reaction_rate_string + '/' + species_string
 
 print a_r
+
+import sympy as sp
+coeff = sp.S(0)
+neg = sp.S(0)
+pos = sp.S(0)
+
+for f_i, f in enumerate(fragments_unique):
+    rates = sp.S(1)
+    species = sp.S(1)
+    for ind in range(order):
+        rates *= sp.S(f[1][ind])
+        species *= sp.S(f[0][ind])
+
+    weight = sp.S(ks[f])
+
+    coeff += weight * rates/species
+    
+    if ks[f] > 0:
+        pos += rates/species
+    elif ks[f] < 0:
+        neg += rates/species
+
+print 'sympy coeff'
+print coeff
 
 # from sympy import symbols
 # a_r = symbols('a_r')
