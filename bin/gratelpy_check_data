@@ -418,26 +418,26 @@ for spec in f_species:
 
 print a_r
 
-import sympy as sp
-coeff = sp.S(0)
-neg = sp.S(0)
-pos = sp.S(0)
+# import sympy as sp
+# coeff = sp.S(0)
+# neg = sp.S(0)
+# pos = sp.S(0)
 
-for f_i, f in enumerate(fragments_unique):
-    rates = sp.S(1)
-    species = sp.S(1)
-    for ind in range(order):
-        rates *= sp.S(f[1][ind])
-        species *= sp.S(f[0][ind])
+# for f_i, f in enumerate(fragments_unique):
+#     rates = sp.S(1)
+#     species = sp.S(1)
+#     for ind in range(order):
+#         rates *= sp.S(f[1][ind])
+#         species *= sp.S(f[0][ind])
 
-    weight = sp.S(ks[f])
+#     weight = sp.S(ks[f])
 
-    coeff += weight * rates/species
+#     coeff += weight * rates/species
     
-    if ks[f] > 0:
-        pos += rates/species
-    elif ks[f] < 0:
-        neg += rates/species
+#     if ks[f] > 0:
+#         pos += rates/species
+#     elif ks[f] < 0:
+#         neg += rates/species
 
-print 'sympy coeff'
-print coeff
+# print 'sympy coeff'
+# print coeff
