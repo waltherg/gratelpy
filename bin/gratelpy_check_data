@@ -441,24 +441,3 @@ for f_i, f in enumerate(fragments_unique):
 
 print 'sympy coeff'
 print coeff
-
-# from sympy import symbols
-# a_r = symbols('a_r')
-# for f_i, f in enumerate(fragments_unique):
-#     reaction_rate_string = symbols('')
-#     species_string = symbols('')
-#     for ind in range(order):
-#         reaction_rate_string += symbols(f[1][ind])
-#         species_string += symbols(f[0][ind])
-    
-#     print reaction_rate_string
-#     print species_string
-
-#     if ks[f] > 0:
-#         a_r += '+'
-#     else:
-#         a_r += '-'
-
-#     a_r += str(abs(ks[f])) + reaction_rate_string + '/' + species_string
-
-# print a_r
