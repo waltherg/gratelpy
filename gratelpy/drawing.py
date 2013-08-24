@@ -59,7 +59,7 @@ def gratelpy_dot(G, positions=None, dictionary_complexes=None, dictionary_reacti
             node.set_shape('\"circle\"')
 
     for node in pydot_graph.get_node_list():
-        node.set_fontsize('26')
+        node.set_fontsize('16')
 
     if dictionary_reactions is not None:
         for node in pydot_graph.get_node_list():
