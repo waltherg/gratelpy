@@ -319,6 +319,13 @@ if mechanism:
 
 print 'printing all critical fragments with subgraphs and K_S score to file',output_file_name
 
+# rename 'k' to 'B' in reaction nodes
+b_dict = {}
+for key in dict_constants_reverse.keys():
+    b_dict[key] = 'B'+dict_constants_reverse[key][1:]
+    
+dict_constants_reverse = b_dict
+
 if dictname is None:
     for f_i, f in enumerate(critical_fragments_unique):
 
@@ -346,6 +353,11 @@ if dictname is None:
 else:
     cd = {'s'+str(key+1): dictionary['complexes_dict_reverse'][key].translate(None,'[]') for key in dictionary['complexes_dict_reverse']}
     kd = {'w'+str(key+1): dictionary['constants_dict_reverse'][key].translate(None,'[]') for key in dictionary['constants_dict_reverse']}
+    
+    kd_new = {}
+    for key in kd.keys():
+        kd_new[key] = 'B'+kd[key][1:]
+    kd = kd_new
     
     if mechanism:
         gratelpy_dot(G, positions=positions_dict, dictionary_complexes = dict_complexes_reverse, dictionary_reactions = dict_constants_reverse, filename=dot_basename+'_graph.dot', filename_print=dot_basename+'_graph.pdf')
