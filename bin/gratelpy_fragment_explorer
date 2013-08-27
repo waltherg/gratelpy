@@ -1,0 +1,150 @@
+#!/usr/bin/env python
+
+from gratelpy.parse_mechanism import get_network_from_mechanism
+from gratelpy.stoich import get_graph_stoich
+from gratelpy.subgraphs import get_subgraph_components, get_all_valid_subgraphs
+from gratelpy.subgraphs import get_subgraph_motifs
+
+import argparse
+import re
+
+def parse_fragments(fragment_file):
+    content = None
+    frags = {}
+    ctr = 0
+    with open(fragment_file, 'r') as f:
+        content = f.readlines()
+    
+    for el in content:
+        frag_parts = [m.group() for m in re.finditer(r'\((\w+)(,\s*\w+)*\)', el)]
+        complexes = [m.group() for m in re.finditer(r'(\w+)', frag_parts[0])]
+        reactions = [m.group() for m in re.finditer(r'(\w+)', frag_parts[1])]
+        name = re.finditer(r'(.*?)\s*\(', el).next().group()[:-2].strip()
+
+        if len(name)>0:
+            if name not in frags.keys():
+                frags[name] = tuple([tuple(complexes), tuple(reactions)])
+            else:
+                print 'Current fragment name',name
+                print 'Fragment names we have already seen',frags.keys()
+                raise('Fragment names are not unique')
+        else:
+            frags['frag '+str(ctr)] = tuple([tuple(complexes), tuple(reactions)])
+
+        ctr += 1
+
+    return frags
+
+def main():
+    parser = argparse.ArgumentParser(description='Validates a supplied fragment \
+                                 and prints out all constituent subgraphs')
+
+    parser.add_argument('mechanism', help='The GraTeLPy mechanism file')
+    parser.add_argument('complexes', help='The number of complexes in your\
+                                           mechanism')
+    parser.add_argument('fragments', help='Your fragments file that lists the \
+                                       fragments you wish to test line-by-line.\
+                     Expected format for each line (i.e. each fragment): \
+                     (A1, A2, ...)(B1, B2, ...), where (A1, B1), (A2, B2), ...\
+                     are edges in the bipartite digraph of the mechanism. \
+                     Use the same naming scheme you use in the mechanism file.\
+                     For brevity you can exclude the enclosing "[" and "]" for\
+                     complexes.\
+                     You can also name your fragments like so:\
+                     Interesting Fragment 1 (A1, A2, ...)(B1, B2, ...)')
+
+    args = parser.parse_args()
+    mechanism_file = str(args.mechanism)
+    num_complexes = int(args.complexes)
+    fragment_file = str(args.fragments)
+
+    alpha, beta, dict_complexes, dict_constants, dict_complexes_rev, dict_constants_rev = get_network_from_mechanism(mechanism_file, num_complexes)
+
+    G, stoich, stoich_rank = get_graph_stoich(alpha, beta)
+
+    fragments = parse_fragments(fragment_file)
+
+    print 'discovered fragments'
+    for f in fragments.keys():
+        print f,fragments[f]
+
+    for f in fragments.keys():
+        f_enc = None
+        if fragments[f][0][0][0] != 's':
+            com = []
+            rxn = []
+            for c in fragments[f][0]:
+                if c[0] != '[':
+                    c = '['+c
+                if c[-1] != ']':
+                    c = c+']'
+                com.append('s'+str(dict_complexes[c]-1))
+            for r in fragments[f][1]:
+                rxn.append('w'+str(dict_constants[r]-1))
+            f_enc = tuple([tuple(com), tuple(rxn)])
+        else:
+            f_enc = fragments[f]
+
+        rank = len(f_enc[0])
+        sg = get_all_valid_subgraphs(G, rank, f_enc)
+
+        if fragments[f][0][0][0] != 's':
+            #sg encoded appropriately
+            sg_dec = []
+
+            # fragment
+            sg_dec.append(fragments[f])
+
+            # subgraph components
+            sc_dec = {}
+            sc = sg[1]
+            for c in sc.keys():
+                index = int(c[1:])+1
+                this_c = dict_complexes_rev[index][1:-2] 
+                sc_dec[this_c] = {}
+
+                sc_dec[this_c]['edges'] = []
+                for e in sc[c]['edges']:
+                    e_dec = (dict_complexes_rev[int(e[0][1:])+1][1:-2], 
+                             dict_constants_rev[int(e[1][1:])+1])
+                    sc_dec[this_c]['edges'].append(e_dec)
+
+                sc_dec[this_c]['p_paths'] = []
+                for p in sc[c]['p_paths']:
+                    p_dec = (dict_complexes_rev[int(p[0][1:])+1][1:-2], 
+                             dict_constants_rev[int(p[1][1:])+1],
+                             dict_complexes_rev[int(p[2][1:])+1][1:-2],'p')
+                    sc_dec[this_c]['p_paths'].append(p_dec)
+
+                sc_dec[this_c]['n_paths'] = []
+                for n in sc[c]['n_paths']:
+                    n_dec = (dict_complexes_rev[int(n[0][1:])+1][1:-2], 
+                             dict_constants_rev[int(n[1][1:])+1],
+                             dict_complexes_rev[int(n[2][1:])+1][1:-2],'n')
+                    sc_dec[this_c]['n_paths'].append(n_dec)
+
+        else:
+            sc_dec = sg[1]
+
+        sg_motifs = get_subgraph_motifs(sc_dec)
+        
+        print '================================'
+        f_print = None
+        if fragments[f][0][0][0] == '[':
+            f_print = tuple([tuple([el[1:-2] for el in fragments[f][0]]),
+                             tuple(fragments[f][1])])
+        else:
+            f_print = fragments[f]
+
+        print 'fragment','\"'+f+'\"'
+        print f_print
+
+        for sg_i, sg in enumerate(sg_motifs.keys()):
+            print '--------------------------------'
+            print 'subgraph',sg_i,':',[el for el in sg]
+            print 'edges',':',sg_motifs[sg]['edges']
+            print 'cycles',':',sg_motifs[sg]['cycles']
+        print '================================'        
+
+if __name__ == '__main__':
+    main()
